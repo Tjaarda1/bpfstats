@@ -1,4 +1,4 @@
-# bpfstat
+# bpfstats
 
 bpfstat is a research-oriented command-line tool for precise statistical analysis of eBPF program execution.
 It focuses on measuring and reporting per-program runtime, latency distributions, and CPU cost with well-defined semantics and controlled measurement error.
