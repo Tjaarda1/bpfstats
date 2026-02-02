@@ -57,6 +57,8 @@ func (latC *LatencyCollector) Start(ctx context.Context) error {
 	if latC.warmup != nil {
 		warmupEnd = latC.started.Add(*latC.warmup)
 	}
+	lastRuntime := time.Nanosecond * 0
+	var lastCount uint64 = 0
 
 	for {
 		select {
@@ -102,8 +104,10 @@ func (latC *LatencyCollector) Start(ctx context.Context) error {
 
 			// Record latency sample (runtime per invocation in nanoseconds)
 			if stats.RunCount > 0 {
-				avgLatencyNs := float64(stats.Runtime) / float64(stats.RunCount)
+				avgLatencyNs := float64((stats.Runtime)-lastRuntime) / float64((stats.RunCount)-lastCount)
 				latC.s.Add(avgLatencyNs)
+				lastRuntime = stats.Runtime
+				lastCount = stats.RunCount
 			}
 		}
 	}
