@@ -3,7 +3,7 @@ package v1
 import "time"
 
 type Parameter interface {
-	Kind()
+	Kind() string
 }
 
 func (Latency) Kind() string { return "latency" }
