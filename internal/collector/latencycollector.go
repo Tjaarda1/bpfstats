@@ -67,7 +67,7 @@ func (latC *LatencyCollector) Start(ctx context.Context) error {
 			latC.mu.Lock()
 			latC.running = false
 			latC.mu.Unlock()
-			close(latC.done)
+			// close(latC.done)
 			return ctx.Err()
 
 		case <-latC.done:
