@@ -103,7 +103,7 @@ func (latC *LatencyCollector) Start(ctx context.Context) error {
 			}
 
 			// Record latency sample (runtime per invocation in nanoseconds)
-			if stats.RunCount > 0 {
+			if stats.RunCount > 0 && stats.RunCount != lastCount {
 				avgLatencyNs := float64((stats.Runtime)-lastRuntime) / float64((stats.RunCount)-lastCount)
 				latC.s.Add(avgLatencyNs)
 				lastRuntime = stats.Runtime

@@ -20,7 +20,6 @@ import (
 // latencyCmd represents the latency command
 func NewCmdLatency(parent string) *cobra.Command {
 	flags := NewLatencyFlags()
-
 	cmd := &cobra.Command{
 		Use:                   "latency",
 		DisableFlagsInUseLine: true,
