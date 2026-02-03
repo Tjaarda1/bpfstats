@@ -15,6 +15,8 @@ func (t *TextOutput) OutputParam(par bpfsv1.Parameter, w io.Writer) error {
 	switch par.Kind() {
 	case "latency":
 		return t.outputLatency(par.(bpfsv1.Latency), w)
+	case "cpu":
+		return t.outputCpu(par.(bpfsv1.Cpu), w)
 	default:
 		return fmt.Errorf("unsupported parameter kind: %s", par.Kind())
 	}
@@ -124,4 +126,66 @@ func contains(slice []string, item string) bool {
 		}
 	}
 	return false
+}
+
+func (t *TextOutput) outputCpu(cpu bpfsv1.Cpu, w io.Writer) error {
+	var sb strings.Builder
+
+	// Header
+	sb.WriteString("=== CPU Statistics ===\n\n")
+
+	// Identity
+	sb.WriteString(fmt.Sprintf("ID: %d\n", cpu.ID))
+
+	// Measurement window
+	sb.WriteString(fmt.Sprintf("Duration: %s\n", cpu.Duration))
+	if cpu.Warmup != nil {
+		sb.WriteString(fmt.Sprintf("Warmup: %s\n", *cpu.Warmup))
+	}
+	if cpu.Started != nil {
+		sb.WriteString(fmt.Sprintf("Started: %s\n", cpu.Started.Format(time.RFC3339)))
+	}
+	if cpu.Ended != nil {
+		sb.WriteString(fmt.Sprintf("Ended: %s\n", cpu.Ended.Format(time.RFC3339)))
+	}
+	sb.WriteString("\n")
+
+	// Volume / integrity
+	sb.WriteString(fmt.Sprintf("Samples: %d\n", cpu.Samples))
+	if cpu.Dropped != nil {
+		sb.WriteString(fmt.Sprintf("Dropped: %d\n", *cpu.Dropped))
+	}
+	if cpu.Rate != nil {
+		sb.WriteString(fmt.Sprintf("Rate: %.2f samples/sec\n", *cpu.Rate))
+	}
+	sb.WriteString("\n")
+
+	// Summary stats
+	sb.WriteString("--- Summary Statistics ---\n")
+	sb.WriteString(fmt.Sprintf("Mean: %s%%\n", cpu.Mean))
+	sb.WriteString(fmt.Sprintf("StdDev: %s%%\n", formatNanos(cpu.StdDev)))
+	if cpu.CV != nil {
+		sb.WriteString(fmt.Sprintf("CV: %.4f\n", *cpu.CV))
+	}
+	if cpu.Min != nil {
+		sb.WriteString(fmt.Sprintf("Min: %s%%\n", *cpu.Min))
+	}
+	if cpu.Max != nil {
+		sb.WriteString(fmt.Sprintf("Max: %s%%\n", *cpu.Max))
+	}
+	sb.WriteString("\n")
+
+	// Metadata
+	if cpu.Clock != nil || cpu.Histogram != nil {
+		sb.WriteString("--- Measurement Info ---\n")
+		if cpu.Clock != nil {
+			sb.WriteString(fmt.Sprintf("Clock: %s\n", *cpu.Clock))
+		}
+		if cpu.Histogram != nil {
+			sb.WriteString(fmt.Sprintf("Histogram: %s\n", *cpu.Histogram))
+		}
+	}
+
+	_, err := w.Write([]byte(sb.String()))
+	return err
 }

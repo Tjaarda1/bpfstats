@@ -136,7 +136,7 @@ func (flags *LatencyFlags) AddFlags(cmd *cobra.Command) {
 		"Write output to a file instead of stdout.")
 
 }
-func (flags *LatencyFlags) ToOptions(parent string, args []string) (*LatencyOptions, error) {
+func (flags *LatencyFlags) ToOptions(parent string, args []string) (*MonitorOptions, error) {
 	// Validation
 	if flags.ID == 0 {
 		return nil, fmt.Errorf("--id is required")
@@ -145,7 +145,7 @@ func (flags *LatencyFlags) ToOptions(parent string, args []string) (*LatencyOpti
 		return nil, fmt.Errorf("--duration is required")
 	}
 
-	o := &LatencyOptions{
+	o := &MonitorOptions{
 		ID:       flags.ID,
 		Duration: flags.Duration,
 	}
@@ -214,7 +214,7 @@ func normalizePercentiles(input []string) []string {
 	return result
 }
 
-func (o *LatencyOptions) Run() error {
+func (o *MonitorOptions) Run() error {
 	ctx := context.Background()
 
 	// Setup output writer
@@ -225,17 +225,16 @@ func (o *LatencyOptions) Run() error {
 
 	// Create collector
 	interval := 100 * time.Millisecond // sampling interval
-	o.collector = collector.NewLatencyCollector(o.ID, interval, o.Warmup)
+	o.latCollector = collector.NewLatencyCollector(o.ID, interval, o.Warmup)
+	o.cpuCollector = collector.NewCPUCollector(o.ID, interval, o.Warmup)
 
 	// Start collector in background
 	ctx, cancel := context.WithTimeout(ctx, o.Duration)
 	defer cancel()
 
-	errCh := make(chan error, 1)
-	go func() {
-		errCh <- o.collector.Start(ctx)
-	}()
-
+	errCh := make(chan error, 2)
+	go func() { errCh <- o.latCollector.Start(ctx) }()
+	go func() { errCh <- o.cpuCollector.Start(ctx) }()
 	// Live updates during measurement
 	if o.Format == OutputText {
 		if err := o.runWithLiveUpdates(ctx); err != nil {
@@ -252,7 +251,7 @@ func (o *LatencyOptions) Run() error {
 	return o.outputFinalStats()
 }
 
-type LatencyOptions struct {
+type MonitorOptions struct {
 
 	// Target selection
 	ID uint32
@@ -270,7 +269,8 @@ type LatencyOptions struct {
 	PercentileKeys []string // normalized: ["p50","p90","p99","p99_9"]
 
 	// Internal (set during Run)
-	collector *collector.LatencyCollector
+	latCollector *collector.LatencyCollector
+	cpuCollector *collector.CpuCollector
 }
 
 type OutputFormat string
@@ -280,7 +280,7 @@ const (
 	OutputJSON OutputFormat = "json"
 )
 
-func (o *LatencyOptions) setupOutput() error {
+func (o *MonitorOptions) setupOutput() error {
 	if o.OutputPath != "" {
 		f, err := os.Create(o.OutputPath)
 		if err != nil {
@@ -293,13 +293,13 @@ func (o *LatencyOptions) setupOutput() error {
 
 	return nil
 }
-func (o *LatencyOptions) closeOutput() {
+func (o *MonitorOptions) closeOutput() {
 	if f, ok := o.Out.(*os.File); ok && f != os.Stdout {
 		f.Close()
 	}
 }
 
-func (o *LatencyOptions) runWithLiveUpdates(ctx context.Context) error {
+func (o *MonitorOptions) runWithLiveUpdates(ctx context.Context) error {
 	ticker := time.NewTicker(1 * time.Second) // update every second
 	defer ticker.Stop()
 
@@ -315,7 +315,8 @@ func (o *LatencyOptions) runWithLiveUpdates(ctx context.Context) error {
 			return nil
 		case <-ticker.C:
 			// Get current snapshot
-			snapshot, err := o.collector.Snapshot()
+			snapshot, err := o.latCollector.Snapshot()
+
 			if err != nil {
 				// No samples yet, skip
 				continue
@@ -337,7 +338,7 @@ func (o *LatencyOptions) runWithLiveUpdates(ctx context.Context) error {
 	}
 }
 
-func (o *LatencyOptions) waitForCompletion(ctx context.Context, errCh chan error) error {
+func (o *MonitorOptions) waitForCompletion(ctx context.Context, errCh chan error) error {
 	select {
 	case <-ctx.Done():
 		return nil
@@ -349,13 +350,20 @@ func (o *LatencyOptions) waitForCompletion(ctx context.Context, errCh chan error
 	}
 }
 
-func (o *LatencyOptions) outputFinalStats() error {
+func (o *MonitorOptions) outputFinalStats() error {
 	// Stop collector and get final snapshot
-	if err := o.collector.Stop(); err != nil {
+	if err := o.latCollector.Stop(); err != nil {
+		return fmt.Errorf("stop collector: %w", err)
+	}
+	if err := o.cpuCollector.Stop(); err != nil {
 		return fmt.Errorf("stop collector: %w", err)
 	}
 
-	snapshot, err := o.collector.Snapshot()
+	latencySnap, err := o.latCollector.Snapshot()
+	if err != nil {
+		return fmt.Errorf("get final snapshot: %w", err)
+	}
+	cpuSnap, err := o.cpuCollector.Snapshot()
 	if err != nil {
 		return fmt.Errorf("get final snapshot: %w", err)
 	}
@@ -376,7 +384,10 @@ func (o *LatencyOptions) outputFinalStats() error {
 	}
 
 	// Use the output interface to format and write
-	if err := outputter.OutputParam(snapshot, o.Out); err != nil {
+	if err := outputter.OutputParam(latencySnap, o.Out); err != nil {
+		return fmt.Errorf("output statistics: %w", err)
+	}
+	if err := outputter.OutputParam(cpuSnap, o.Out); err != nil {
 		return fmt.Errorf("output statistics: %w", err)
 	}
 
