@@ -162,17 +162,21 @@ func (t *TextOutput) outputCpu(cpu bpfsv1.Cpu, w io.Writer) error {
 
 	// Summary stats
 	sb.WriteString("--- Summary Statistics ---\n")
-	sb.WriteString(fmt.Sprintf("Mean: %s%%\n", cpu.Mean))
-	sb.WriteString(fmt.Sprintf("StdDev: %s%%\n", formatNanos(cpu.StdDev)))
+	sb.WriteString(fmt.Sprintf("Mean: %.2f%%\n", cpu.Mean))
+	sb.WriteString(fmt.Sprintf("StdDev: %.2f%%\n", cpu.StdDev))
+
 	if cpu.CV != nil {
 		sb.WriteString(fmt.Sprintf("CV: %.4f\n", *cpu.CV))
 	}
+
 	if cpu.Min != nil {
-		sb.WriteString(fmt.Sprintf("Min: %s%%\n", *cpu.Min))
+		sb.WriteString(fmt.Sprintf("Min: %.2f%%\n", *cpu.Min))
 	}
+
 	if cpu.Max != nil {
-		sb.WriteString(fmt.Sprintf("Max: %s%%\n", *cpu.Max))
+		sb.WriteString(fmt.Sprintf("Max: %.2f%%\n", *cpu.Max))
 	}
+
 	sb.WriteString("\n")
 
 	// Metadata
