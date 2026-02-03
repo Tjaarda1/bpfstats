@@ -58,11 +58,12 @@ type Cpu struct {
 	Rate    *float64 `json:"rate_per_sec,omitempty"` // samples/sec, if computed
 
 	// Summary stats (nanoseconds)
-	Mean   uint64   `json:"mean_perc"`    // avg
-	StdDev uint64   `json:"stddev_perc"`  // standard deviation
-	CV     *float64 `json:"cv,omitempty"` // coefficient of variation (stddev/mean)
-	Min    *uint64  `json:"min_perc,omitempty"`
-	Max    *uint64  `json:"max_perc,omitempty"`
+	// Ratio fields are 0..1 (e.g. 0.2375 == 23.75%)
+	Mean   float64  `json:"mean"`          // ratio
+	StdDev float64  `json:"stddev"`        // ratio
+	Min    *float64 `json:"min,omitempty"` // ratio
+	Max    *float64 `json:"max,omitempty"` // ratio
+	CV     *float64 `json:"cv,omitempty"`  // still stddev/mean (dimensionless)
 
 	// Measurement semantics / reproducibility
 	Clock     *string `json:"clock,omitempty"`     // e.g. "ktime_ns", "cycles"

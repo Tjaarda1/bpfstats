@@ -111,7 +111,7 @@ func (cpuC *CpuCollector) Start(ctx context.Context) error {
 				now := time.Now()
 				dWall := now.Sub(*lastTime).Nanoseconds() // ns
 
-				avgCpuPerc := (float64((stats.Runtime)-lastRuntime) / float64(dWall)) * 100
+				avgCpuPerc := (float64((stats.Runtime)-lastRuntime) / float64(dWall))
 				cpuC.s.Add(avgCpuPerc)
 				lastTime = &now
 				lastRuntime = stats.Runtime
@@ -150,8 +150,8 @@ func (cpuC *CpuCollector) Snapshot() (bpfsv1.Parameter, error) {
 	variance := cpuC.s.Variance()
 	stddev := math.Sqrt(variance)
 
-	min := uint64(cpuC.s.Min())
-	max := uint64(cpuC.s.Max())
+	min := cpuC.s.Min()
+	max := cpuC.s.Max()
 
 	// Coefficient of variation
 	cv := stddev / mean
@@ -179,8 +179,8 @@ func (cpuC *CpuCollector) Snapshot() (bpfsv1.Parameter, error) {
 		Samples: count,
 		Rate:    &rate,
 
-		Mean:   uint64(mean),
-		StdDev: uint64(stddev),
+		Mean:   mean,
+		StdDev: stddev,
 		CV:     &cv,
 		Min:    &min,
 		Max:    &max,

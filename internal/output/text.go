@@ -160,21 +160,21 @@ func (t *TextOutput) outputCpu(cpu bpfsv1.Cpu, w io.Writer) error {
 	}
 	sb.WriteString("\n")
 
-	// Summary stats
+	// Summary stats (stored as ratios: 0..1)
 	sb.WriteString("--- Summary Statistics ---\n")
-	sb.WriteString(fmt.Sprintf("Mean: %.2f%%\n", cpu.Mean))
-	sb.WriteString(fmt.Sprintf("StdDev: %.2f%%\n", cpu.StdDev))
+	sb.WriteString(fmt.Sprintf("Mean: %.2f%%\n", 100.0*cpu.Mean))
+	sb.WriteString(fmt.Sprintf("StdDev: %.2f%%\n", 100.0*cpu.StdDev))
 
 	if cpu.CV != nil {
 		sb.WriteString(fmt.Sprintf("CV: %.4f\n", *cpu.CV))
 	}
 
 	if cpu.Min != nil {
-		sb.WriteString(fmt.Sprintf("Min: %.2f%%\n", *cpu.Min))
+		sb.WriteString(fmt.Sprintf("Min: %.2f%%\n", 100.0*(*cpu.Min)))
 	}
 
 	if cpu.Max != nil {
-		sb.WriteString(fmt.Sprintf("Max: %.2f%%\n", *cpu.Max))
+		sb.WriteString(fmt.Sprintf("Max: %.2f%%\n", 100.0*(*cpu.Max)))
 	}
 
 	sb.WriteString("\n")
