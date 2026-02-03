@@ -365,8 +365,17 @@ func (o *LatencyOptions) outputFinalStats() error {
 		fmt.Fprintln(o.Out, "\n\n=== Final Statistics ===")
 	}
 
+	var outputter output.ParameterOutput
+	switch o.Format {
+	case OutputText:
+		outputter = &output.TextOutput{}
+	case OutputJSON:
+		outputter = &output.JsonOutput{}
+	default:
+		return fmt.Errorf("unknown output format: %v", o.Format)
+	}
+
 	// Use the output interface to format and write
-	outputter := &output.JsonOutput{}
 	if err := outputter.OutputParam(snapshot, o.Out); err != nil {
 		return fmt.Errorf("output statistics: %w", err)
 	}
