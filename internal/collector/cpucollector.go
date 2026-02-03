@@ -97,14 +97,13 @@ func (cpuC *CpuCollector) Start(ctx context.Context) error {
 				continue
 			}
 
-			// Skip samples during warmup period
-			if cpuC.warmup != nil && time.Now().Before(warmupEnd) {
-				continue
-			}
-
 			if lastTime == nil {
 				n := time.Now()
 				lastTime = &n
+			}
+			// Skip samples during warmup period
+			if cpuC.warmup != nil && time.Now().Before(warmupEnd) {
+				continue
 			}
 
 			// Record cpu sample if there is a new entry
@@ -114,7 +113,7 @@ func (cpuC *CpuCollector) Start(ctx context.Context) error {
 
 				avgCpuPerc := (float64((stats.Runtime)-lastRuntime) / float64(dWall))
 				if avgCpuPerc > 1 {
-					fmt.Println("something is happening check it out: %f", avgCpuPerc)
+					fmt.Printf("something is happening check it out: %f", avgCpuPerc)
 					continue
 				}
 				cpuC.s.Add(avgCpuPerc)
