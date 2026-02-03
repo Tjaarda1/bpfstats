@@ -119,7 +119,7 @@ func (latC *LatencyCollector) Stop() error {
 	defer latC.mu.Unlock()
 
 	if !latC.running {
-		return fmt.Errorf("collector not running")
+		return nil
 	}
 
 	latC.running = false
