@@ -106,12 +106,17 @@ func (cpuC *CpuCollector) Start(ctx context.Context) error {
 				n := time.Now()
 				lastTime = &n
 			}
+
 			// Record cpu sample if there is a new entry
 			if stats.RunCount > 0 && stats.Runtime-lastRuntime != 0 {
 				now := time.Now()
 				dWall := now.Sub(*lastTime).Nanoseconds() // ns
 
 				avgCpuPerc := (float64((stats.Runtime)-lastRuntime) / float64(dWall))
+				if avgCpuPerc > 1 {
+					fmt.Println("something is happening check it out: %f", avgCpuPerc)
+					continue
+				}
 				cpuC.s.Add(avgCpuPerc)
 				lastTime = &now
 				lastRuntime = stats.Runtime
