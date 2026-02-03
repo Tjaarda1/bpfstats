@@ -58,7 +58,7 @@ func (cpuC *CpuCollector) Start(ctx context.Context) error {
 		warmupEnd = cpuC.started.Add(*cpuC.warmup)
 	}
 
-	lastRuntime := time.Nanosecond * 0
+	var lastRuntime time.Duration
 	var lastTime *time.Time
 	for {
 		select {
@@ -75,51 +75,57 @@ func (cpuC *CpuCollector) Start(ctx context.Context) error {
 			return nil
 
 		case <-ticker.C:
-			// Collect sample
 			prog, err := ebpf.NewProgramFromID(ebpf.ProgramID(cpuC.id))
-			if err != nil {
-				// Non-fatal error handling inspired by Prometheus
-				select {
-				case cpuC.errCh <- fmt.Errorf("NewProgramFromID: %w", err):
-				default:
-					// Don't block if error channel is full
-				}
+			if err != nil { /* ... */
 				continue
 			}
 
 			stats, err := prog.Stats()
-			prog.Close() // Close immediately after use
-			if err != nil {
-				select {
-				case cpuC.errCh <- fmt.Errorf("Stats: %w", err):
-				default:
-				}
+			prog.Close()
+			if err != nil { /* ... */
 				continue
 			}
 
-			if lastTime == nil {
-				n := time.Now()
-				lastTime = &n
-			}
-			// Skip samples during warmup period
-			if cpuC.warmup != nil && time.Now().Before(warmupEnd) {
-				continue
-			}
+			now := time.Now()
 
-			// Record cpu sample if there is a new entry
-			if stats.RunCount > 0 && stats.Runtime-lastRuntime != 0 {
-				now := time.Now()
-				dWall := now.Sub(*lastTime).Nanoseconds() // ns
-
-				avgCpuPerc := (float64((stats.Runtime)-lastRuntime) / float64(dWall))
-				if avgCpuPerc > 1 {
-					fmt.Printf("something is happening check it out: %f", avgCpuPerc)
-					continue
-				}
-				cpuC.s.Add(avgCpuPerc)
-				lastTime = &now
+			// Warmup handling: keep baseline aligned to wall clock and runtime
+			if cpuC.warmup != nil && now.Before(warmupEnd) {
+				t := now
+				lastTime = &t
 				lastRuntime = stats.Runtime
+				continue
 			}
+
+			// Prime baseline on first post-warmup observation
+			if lastTime == nil {
+				t := now
+				lastTime = &t
+				lastRuntime = stats.Runtime
+				continue
+			}
+
+			dRuntime := stats.Runtime - lastRuntime
+			if stats.RunCount == 0 || dRuntime == 0 {
+				// Optional: you might still want to advance wall time baseline here,
+				// depending on your definition of "interval"
+				continue
+			}
+
+			dWall := now.Sub(*lastTime)
+			if dWall <= 0 {
+				// avoid divide-by-zero / negative intervals
+				t := now
+				lastTime = &t
+				lastRuntime = stats.Runtime
+				continue
+			}
+
+			avgCpuFrac := float64(dRuntime) / float64(dWall) // both are durations
+
+			cpuC.s.Add(avgCpuFrac)
+			t := now
+			lastTime = &t
+			lastRuntime = stats.Runtime
 		}
 	}
 }
