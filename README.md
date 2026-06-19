@@ -16,3 +16,41 @@ Unlike observability tools optimized for dashboards or coarse metrics, bpfstat i
 - Clear measurement semantics, suitable for research, benchmarking, and performance evaluation
 
 - Deterministic and reproducible output, designed for analysis rather than dashboards
+
+## Running
+
+Enable BPF stats:
+
+```bash
+sudo sysctl -w kernel.bpf_stats_enabled=1
+```
+
+Check the BPF program ID:
+
+```bash
+sudo bpftool prog
+```
+
+Note the program ID you want to inspect.
+
+Install bpftool if needed:
+
+```bash
+ARCH=$(dpkg --print-architecture)
+VERSION=7.7.0
+
+wget "https://github.com/libbpf/bpftool/releases/download/v${VERSION}/bpftool-v${VERSION}-${ARCH}.tar.gz"
+tar -xvf "bpftool-v${VERSION}-${ARCH}.tar.gz"
+```
+
+Run the latency tool from this directory:
+
+```bash
+go run . latency --id <prog-id> --duration 60s
+```
+
+Example:
+
+```bash
+go run . latency --id 123 --duration 60s
+```
