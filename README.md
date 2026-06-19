@@ -40,7 +40,7 @@ ARCH=$(dpkg --print-architecture)
 VERSION=7.7.0
 
 wget "https://github.com/libbpf/bpftool/releases/download/v${VERSION}/bpftool-v${VERSION}-${ARCH}.tar.gz"
-tar -xvf "bpftool-v${VERSION}-${ARCH}.tar.gz"
+tar -xvf "bpftool-v${VERSION}-${ARCH}.tar.gz" -C /usr/bin
 ```
 
 Run the latency tool from this directory:
